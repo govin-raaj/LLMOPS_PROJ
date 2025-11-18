@@ -4,8 +4,8 @@ from services.storage_service import S3Storage
 from services.llm_service import LLMService
 from config.config import Config
 import os
-from langchain.document_loaders import TextLoader, PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_community.document_loaders import PyPDFLoader,TextLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 import tempfile
 from src.logger import logging
 
