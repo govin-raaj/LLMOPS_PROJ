@@ -2,7 +2,7 @@ from Fastapi import FastAPI, request, jsonify
 from models.vector_store import VectorStore
 from services.storage_service import S3Storage
 from services.llm_service import LLMService
-from config import Config
+from config.config import Config
 import os
 from langchain.document_loaders import TextLoader, PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -11,7 +11,7 @@ from src.logger import logging
 
 
 app = FastAPI()
-vectore_store = VectorStore()
+vectore_store = VectorStore(Config.VECTOR_DB_PATH)
 llm_service = LLMService(vectore_store)
 
 @app.get("/")
