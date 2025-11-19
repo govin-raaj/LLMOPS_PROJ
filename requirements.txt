@@ -1,23 +1,26 @@
-python-dotenv
-structlog
-
+# LangChain Core
 langchain
-langchain-community
 langchain-core
 
-langchain-groq
-langchain-google-genai
+# OpenAI Integration
 langchain-openai
-
-docx2txt
-ipykernel
-python-multipart
-faiss-cpu
-
-fastapi
-uvicorn
-Jinja2
-
-langsmith
 openai
-pandas
+
+# Anthropic Integration
+langchain-anthropic
+
+# Google Gemini (PaLM) Integration
+langchain-google-genai
+google-generativeai
+
+# Hugging Face Integration
+langchain-huggingface
+transformers
+huggingface-hub
+
+# Environment Variable Management
+python-dotenv
+
+# Machine Learning Utilities
+numpy
+scikit-learn

@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RAG Assistant — Upload & Query</title>
+
+  <style>
+    :root{
+      --bg:#0f1724;
+      --card:#0b1220;
+      --muted:#9aa4b2;
+      --accent1:#7c5cff;
+      --accent2:#00d4ff;
+      --glass: rgba(255,255,255,0.04);
+      --radius:16px;
+      --shadow: 0 8px 30px rgba(2,6,23,0.6);
+      --glass-2: rgba(255,255,255,0.02);
+      --success: #16a34a;
+      --danger: #ef4444;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    html,body{height:100%;}
+    body{
+      margin:0;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(124,92,255,0.12), transparent 8%),
+                  radial-gradient(1000px 500px at 90% 90%, rgba(0,212,255,0.06), transparent 6%),
+                  var(--bg);
+      color:#e6eef8;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:48px 24px;
+    }
+
+    .app{
+      width:100%;
+      max-width:1100px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:24px;
+      box-shadow:var(--shadow);
+      padding:28px;
+      display:grid;
+      grid-template-columns: 420px 1fr;
+      gap:24px;
+      align-items:start;
+    }
+
+    .left{
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), var(--glass));
+      border-radius:16px;
+      padding:20px;
+      min-height:420px;
+      box-shadow: 0 6px 18px rgba(2,6,23,0.45);
+      border:1px solid rgba(255,255,255,0.03);
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    h1{font-size:20px;margin:0 0 6px 0}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    .dropzone{
+      margin-top:12px;
+      border:1px dashed rgba(255,255,255,0.06);
+      border-radius:12px;
+      padding:18px;
+      text-align:center;
+      cursor:pointer;
+      transition:all .18s ease;
+      background:linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+    }
+    .dropzone.drag{border-color:rgba(124,92,255,0.6);transform:translateY(-2px)}
+    .dropzone input{display:none}
+
+    .btn{
+      display:inline-flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;border:none;cursor:pointer;font-weight:600;
+      background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#071123;
+      box-shadow:0 8px 25px rgba(124,92,255,0.12);
+    }
+
+    .small{font-size:13px;padding:8px 12px;border-radius:8px}
+
+    .meta{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{background:var(--glass-2);padding:8px 10px;border-radius:10px;font-size:13px;color:var(--muted);border:1px solid rgba(255,255,255,0.02)}
+
+    .right{
+      padding:20px;background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.005));border-radius:16px;min-height:420px;display:flex;flex-direction:column;gap:12px;
+    }
+
+    .controls{display:flex;gap:10px;align-items:center}
+    input[type=text], textarea{width:100%;padding:12px;border-radius:12px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit;outline:none}
+    textarea{min-height:120px;resize:vertical}
+
+    .result-area{margin-top:6px;display:flex;flex-direction:column;gap:12px}
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.007));
+      border-radius:12px;padding:14px;border:1px solid rgba(255,255,255,0.03);
+      box-shadow: 0 6px 20px rgba(2,6,23,0.45);
+    }
+
+    .placeholder{color:var(--muted);font-size:14px}
+
+    .footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+
+    .status{font-size:13px;color:var(--muted)}
+
+    .response-text{white-space:pre-wrap;line-height:1.5}
+
+    .loader{display:inline-block;width:18px;height:18px;border-radius:50%;border:3px solid rgba(255,255,255,0.06);border-top-color:var(--accent1);animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:28px;background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#071123;padding:10px 16px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.5)}
+
+    /* responsive */
+    @media (max-width:980px){
+      .app{grid-template-columns:1fr;max-width:900px}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="left">
+      <div>
+        <h1>RAG Assistant</h1>
+        <p class="lead">Upload docs (PDF / TXT) to index into the vector store, then ask questions. Fast, private, and local-first.</p>
+      </div>
+
+      <div class="dropzone" id="dropzone">
+        <input id="fileInput" type="file" accept=".pdf,.txt">
+        <div style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path d="M12 3v10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M7 10l5-5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          <strong>Drag & drop or click to upload</strong>
+          <div class="placeholder">Only .pdf and .txt — split into chunks and indexed</div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+        <div class="meta">
+          <div class="chip">Chunk size: 1000</div>
+          <div class="chip">Overlap: 200</div>
+        </div>
+        <button id="uploadBtn" class="btn small">Upload</button>
+      </div>
+
+      <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center">
+        <div class="status">API: <span id="apiUrl">http://localhost:8080</span></div>
+        <div style="font-size:13px;color:var(--muted)">Ready</div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="width:100%">
+          <label for="question"><strong>Ask a question</strong></label>
+          <input id="question" type="text" placeholder="e.g. Summarize the uploaded paper in 5 sentences"/>
+        </div>
+        <div style="margin-left:12px">
+          <button id="askBtn" class="btn small">Ask</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><strong>Answer</strong></div>
+          <div id="loading" style="display:none"><span class="loader"></span></div>
+        </div>
+
+        <div id="result" class="result-area">
+          <div class="placeholder">No response yet. Ask a question after uploading documents.</div>
+        </div>
+
+        <div class="footer">
+          <div class="status" id="chunksInfo"></div>
+          <div style="display:flex;gap:8px">
+            <button id="copyBtn" class="small">Copy</button>
+            <button id="clearBtn" class="small">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center;margin-top:8px">
+        <div style="flex:1" class="card">
+          <strong>Activity</strong>
+          <div id="activity" style="margin-top:8px;color:var(--muted);font-size:13px">No activity yet.</div>
+        </div>
+
+        <div style="width:200px" class="card">
+          <strong>Indexed</strong>
+          <div id="indexed" style="font-size:20px;margin-top:8px">0</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" style="display:none">Uploaded</div>
+
+  <script>
+    const API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:8080' : location.origin;
+
+    const fileInput = document.getElementById('fileInput');
+    const dropzone = document.getElementById('dropzone');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const askBtn = document.getElementById('askBtn');
+    const questionInput = document.getElementById('question');
+    const resultEl = document.getElementById('result');
+    const loadingEl = document.getElementById('loading');
+    const activityEl = document.getElementById('activity');
+    const indexedEl = document.getElementById('indexed');
+    const toast = document.getElementById('toast');
+    const chunksInfo = document.getElementById('chunksInfo');
+
+    let latestChunks = 0;
+
+    function showToast(text){
+      toast.textContent = text;
+      toast.style.display = 'block';
+      setTimeout(()=> toast.style.display='none',2200);
+    }
+
+    dropzone.addEventListener('click', ()=> fileInput.click());
+    dropzone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropzone.classList.add('drag'); });
+    dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('drag'));
+    dropzone.addEventListener('drop', (e)=>{
+      e.preventDefault(); dropzone.classList.remove('drag');
+      const f = e.dataTransfer.files[0];
+      if(f) fileInput.files = e.dataTransfer.files;
+    });
+
+    uploadBtn.addEventListener('click', async ()=>{
+      if(!fileInput.files.length){ alert('Choose a file first'); return; }
+      const file = fileInput.files[0];
+      const form = new FormData();
+      form.append('file', file);
+      activityEl.textContent = `Uploading ${file.name}...`;
+
+      try{
+        const res = await fetch(API_URL + '/upload', { method: 'POST', body: form });
+        const json = await res.json();
+        if(!res.ok) throw new Error(json.detail || json.error || 'Upload failed');
+        showToast('Uploaded');
+        activityEl.textContent = `Indexed ${json.chunks_processed} chunks from ${file.name}`;
+        latestChunks = json.chunks_processed || 0;
+        indexedEl.textContent = Number(indexedEl.textContent || 0) + latestChunks;
+        chunksInfo.textContent = `${latestChunks} chunks (last upload)`;
+      }catch(err){
+        console.error(err);
+        activityEl.textContent = 'Upload error: ' + err.message;
+        alert('Upload error: ' + err.message);
+      }
+    });
+
+    askBtn.addEventListener('click', async ()=>{ await askQuestion(); });
+    questionInput.addEventListener('keydown', async (e)=>{ if(e.key === 'Enter') await askQuestion(); });
+
+    async function askQuestion(){
+      const q = questionInput.value.trim();
+      if(!q){ alert('Type a question'); return; }
+      loadingEl.style.display = 'block';
+      resultEl.innerHTML = '';
+      activityEl.textContent = `Asking: "${q}"`;
+
+      try{
+        const res = await fetch(API_URL + '/query', {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify({ question: q })
+        });
+        const json = await res.json();
+        if(!res.ok) throw new Error(json.detail || json.error || 'Query failed');
+
+        const answer = json.response;
+        const card = document.createElement('div');
+        card.className = 'card';
+        const pre = document.createElement('div');
+        pre.className = 'response-text';
+        pre.textContent = answer;
+        card.appendChild(pre);
+        resultEl.appendChild(card);
+
+        activityEl.textContent = `Answered — ${q}`;
+      }catch(err){
+        console.error(err);
+        activityEl.textContent = 'Query error: ' + err.message;
+        const errCard = document.createElement('div');
+        errCard.className = 'card';
+        errCard.textContent = 'Error: ' + err.message;
+        resultEl.appendChild(errCard);
+      }finally{
+        loadingEl.style.display = 'none';
+      }
+    }
+
+    // copy & clear
+    document.getElementById('copyBtn').addEventListener('click', ()=>{
+      const txt = resultEl.innerText.trim(); if(!txt) return; navigator.clipboard.writeText(txt); showToast('Copied');
+    });
+    document.getElementById('clearBtn').addEventListener('click', ()=>{ resultEl.innerHTML = '<div class="placeholder">No response yet. Ask a question after uploading documents.</div>'; });
+
+  </script>
+</body>
+</html>
